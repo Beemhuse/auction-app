@@ -1,0 +1,36 @@
+import { PartialType } from '@nestjs/swagger';
+import { Transform } from 'class-transformer';
+import { IsEnum, IsISO8601, IsNotEmpty, IsOptional, IsString, Length, Matches, MaxLength } from 'class-validator';
+import { AuctionStatus } from '../database/entities';
+
+export class CreateAuctionDto {
+  @IsString() @IsNotEmpty() @MaxLength(200)
+  title: string;
+
+  @Transform(({ value }) => typeof value === 'string' ? value.toUpperCase() : value)
+  @IsString() @Length(3, 3) @Matches(/^[A-Z]{3}$/)
+  currency: string;
+
+  @IsString() @Matches(/^\d+$/)
+  startingPriceMinor: string;
+
+  @IsOptional() @IsString() @Matches(/^\d+$/)
+  reservePriceMinor?: string | null;
+
+  @IsString() @Matches(/^[1-9]\d*$/)
+  depositAmountMinor: string;
+
+  @IsString() @Matches(/^[1-9]\d*$/)
+  minIncrementMinor: string;
+
+  @IsOptional() @IsEnum(AuctionStatus)
+  status?: AuctionStatus;
+
+  @IsISO8601()
+  startsAt: string;
+
+  @IsISO8601()
+  endsAt: string;
+}
+
+export class UpdateAuctionDto extends PartialType(CreateAuctionDto) {}
