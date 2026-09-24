@@ -37,6 +37,13 @@ export async function apiRequest(path, { schema, body, auth, roomToken, signal, 
     throw new ApiError('Connection problem. Check your internet and try again.', { status: 0 });
   }
 
+  // A web page instead of JSON means the request never reached the API, e.g. VITE_API_URL was
+  // missing at build time and a hosting rewrite served index.html.
+  if (!(response.headers.get('content-type') ?? '').includes('application/json')) {
+    console.error(`Expected JSON from ${API_BASE}${path}, got ${response.headers.get('content-type')}`);
+    throw new ApiError(`Could not reach the auction server (${API_BASE}). Check VITE_API_URL and redeploy.`, { status: response.status });
+  }
+
   const data = await response.json().catch(() => null);
   if (!response.ok) throw new ApiError(readMessage(data, response.status), { status: response.status, body: data });
   if (!schema) return data;

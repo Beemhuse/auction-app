@@ -2,6 +2,7 @@ import { Module } from '@nestjs/common';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { validateEnvironment } from './config/environment';
+import { databaseSsl } from './database/ssl';
 import { HealthModule } from './health/health.module';
 import { AuctionsModule } from './auctions/auctions.module';
 import { RegistrationsModule } from './registrations/registrations.module';
@@ -19,7 +20,7 @@ import { AdminModule } from './admin/admin.module';
       inject: [ConfigService],
       useFactory: (config: ConfigService) => ({
         type: 'postgres', url: config.getOrThrow<string>('DATABASE_URL'), autoLoadEntities: true,
-        synchronize: false, ssl: config.get('NODE_ENV') === 'production' ? { rejectUnauthorized: true } : false,
+        synchronize: false, ssl: databaseSsl(config.get<string>('DATABASE_SSL')),
       }),
     }),
     AuthModule, PaystackModule, HealthModule, AuctionsModule, RegistrationsModule, TelegramModule, PaymentsModule, BiddingModule, AdminModule,

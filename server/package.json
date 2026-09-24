@@ -5,11 +5,13 @@
   "scripts": {
     "build": "nest build",
     "start": "node dist/main.js",
+    "start:prod": "npm run migration:deploy && node dist/main.js",
     "start:dev": "nest start --watch",
     "typecheck": "tsc --noEmit",
     "test": "jest --runInBand",
     "test:watch": "jest --watch",
     "migration:run": "npm run build && node node_modules/typeorm/cli.js migration:run -d dist/database/data-source.js",
+    "migration:deploy": "typeorm migration:run -d dist/database/data-source.js",
     "seed": "npm run build && node dist/database/seed.js",
     "schema:check": "npm run build && node dist/database/check-schema.js",
     "client:generate": "openapi-ts -i http://127.0.0.1:3010/docs-json -o clients/typescript/src -c @hey-api/client-fetch",

@@ -1,0 +1,52 @@
+# Render Blueprint: API + Postgres + Redis-compatible Key Value.
+# New > Blueprint > pick this repo. Values marked `sync: false` are prompted for on first deploy.
+services:
+  - type: web
+    name: hammer-api
+    runtime: docker
+    rootDir: server
+    dockerfilePath: ./Dockerfile
+    # Free instances sleep when idle, which stops the Telegram bot; use a paid plan for real use.
+    plan: starter
+    # Telegram allows one polling process per bot, so never scale this past one instance.
+    numInstances: 1
+    healthCheckPath: /api/health
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: DATABASE_URL
+        fromDatabase:
+          name: hammer-db
+          property: connectionString
+      - key: REDIS_URL
+        fromService:
+          type: keyvalue
+          name: hammer-redis
+          property: connectionString
+      - key: TELEGRAM_BOT_ENABLED
+        value: "true"
+      - key: PAYSTACK_BASE_URL
+        value: https://api.paystack.co
+      - key: MINI_APP_URL
+        value: https://miniapp.karteq.com.ng/
+      - key: CORS_ORIGINS
+        value: https://miniapp.karteq.com.ng
+      - key: TELEGRAM_BOT_TOKEN
+        sync: false
+      - key: PAYSTACK_SECRET_KEY
+        sync: false
+      - key: ENTRY_CODE_SECRET
+        generateValue: true
+      - key: ADMIN_API_KEY
+        generateValue: true
+
+  - type: keyvalue
+    name: hammer-redis
+    plan: starter
+    ipAllowList: [] # private network only
+
+databases:
+  - name: hammer-db
+    databaseName: hammer
+    user: hammer
+    plan: basic-256mb

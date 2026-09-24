@@ -1,7 +1,10 @@
+import { databaseSsl } from '../database/ssl';
+
 export type Environment = {
   NODE_ENV: string;
   PORT: number;
   DATABASE_URL: string;
+  DATABASE_SSL: string;
   REDIS_URL: string;
   TELEGRAM_BOT_TOKEN: string;
   ENTRY_CODE_SECRET: string;
@@ -24,6 +27,7 @@ export function validateEnvironment(input: Record<string, unknown>): Environment
   if (String(input.ENTRY_CODE_SECRET).length < 32) {
     throw new Error('ENTRY_CODE_SECRET must be at least 32 characters');
   }
+  databaseSsl(input.DATABASE_SSL === undefined ? undefined : String(input.DATABASE_SSL)); // fail fast on a typo
   if (String(input.ADMIN_API_KEY).length < 24) {
     throw new Error('ADMIN_API_KEY must be at least 24 characters');
   }
@@ -31,6 +35,7 @@ export function validateEnvironment(input: Record<string, unknown>): Environment
     NODE_ENV: String(input.NODE_ENV ?? 'development'),
     PORT: Number(input.PORT ?? 3000),
     DATABASE_URL: String(input.DATABASE_URL),
+    DATABASE_SSL: String(input.DATABASE_SSL ?? ''),
     REDIS_URL: String(input.REDIS_URL),
     TELEGRAM_BOT_TOKEN: String(input.TELEGRAM_BOT_TOKEN),
     ENTRY_CODE_SECRET: String(input.ENTRY_CODE_SECRET),
