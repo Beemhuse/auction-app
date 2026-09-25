@@ -18,7 +18,8 @@ async function bootstrap(): Promise<void> {
   app.enableShutdownHooks();
 
   const origins = process.env.CORS_ORIGINS?.split(',').map((value) => value.trim()).filter(Boolean) ?? [];
-  app.enableCors({ origin: origins, credentials: true });
+  // Fastify's CORS plugin only allows GET, HEAD and POST unless methods are listed; the admin app uses PATCH.
+  app.enableCors({ origin: origins, credentials: true, methods: ['GET', 'HEAD', 'POST', 'PATCH', 'PUT', 'DELETE'] });
 
   if (process.env.NODE_ENV !== 'production') {
     const config = new DocumentBuilder().setTitle('Project Hammer API').setVersion('1').addBearerAuth().build();
