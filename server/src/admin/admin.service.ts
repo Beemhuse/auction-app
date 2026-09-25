@@ -1,7 +1,7 @@
 import { BadGatewayException, BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { In, Repository } from 'typeorm';
-import { Auction, AuctionRegistration, AuctionResult, AuctionStatus, Bid, DepositStatus } from '../database/entities';
+import { Auction, AuctionRegistration, AuctionResult, AuctionStatus, Bid, DepositRefund, DepositStatus } from '../database/entities';
 import { CreateAuctionDto, SendUserMessageDto, UpdateAuctionDto } from './admin.dto';
 import { TelegramUsersService, describeTelegramUser } from '../auth/telegram-users.service';
 import { TelegramBotService, adminMessage } from '../telegram/telegram-bot.service';
@@ -14,6 +14,7 @@ export class AdminService {
     @InjectRepository(AuctionRegistration) private readonly registrations: Repository<AuctionRegistration>,
     @InjectRepository(Bid) private readonly bids: Repository<Bid>,
     @InjectRepository(AuctionResult) private readonly results: Repository<AuctionResult>,
+    @InjectRepository(DepositRefund) private readonly refunds: Repository<DepositRefund>,
     private readonly payments: PaymentsService,
     private readonly telegramUsers: TelegramUsersService,
     private readonly telegram: TelegramBotService,
@@ -85,7 +86,10 @@ export class AdminService {
 
   async registrationsFor(auctionId: string) {
     await this.requireAuction(auctionId);
-    return this.withProfiles(await this.registrations.find({ where: { auctionId }, order: { createdAt: 'DESC' } }));
+    const registrations = await this.withProfiles(await this.registrations.find({ where: { auctionId }, order: { createdAt: 'DESC' } }));
+    const refunds = registrations.length ? await this.refunds.findBy({ registrationId: In(registrations.map((row) => row.id)) }) : [];
+    const refundFor = new Map(refunds.map((refund) => [refund.registrationId, { id: refund.id, status: refund.status, amountMinor: refund.amountMinor, customerDetails: refund.customerDetails, updatedAt: refund.updatedAt }]));
+    return registrations.map((row) => ({ ...row, refund: refundFor.get(row.id) ?? null }));
   }
 
   async bidsFor(auctionId: string) {

@@ -6,17 +6,25 @@ import { Auction, AuctionRegistration, DepositStatus, PaymentAttempt, PaymentAtt
 import { EntryCodeService } from '../registrations/entry-code.service';
 import { PaystackChargeDataDto, PaystackWebhookDto } from './dto';
 import { PaystackService } from '../integrations/paystack/paystack.service';
+import { RefundsService } from './refunds.service';
 import { TelegramBotService } from '../telegram/telegram-bot.service';
 
 @Injectable()
 export class PaymentsService {
   private readonly logger = new Logger(PaymentsService.name);
-  constructor(private readonly config: ConfigService, private readonly dataSource: DataSource, private readonly codes: EntryCodeService, private readonly telegram: TelegramBotService, private readonly paystack: PaystackService) {}
+  constructor(private readonly config: ConfigService, private readonly dataSource: DataSource, private readonly codes: EntryCodeService, private readonly telegram: TelegramBotService, private readonly paystack: PaystackService, private readonly refunds: RefundsService) {}
   async processWebhook(rawBody: Buffer, signature: string, input: unknown) {
     const expected = createHmac('sha512', this.config.getOrThrow<string>('PAYSTACK_SECRET_KEY')).update(rawBody).digest();
     let actual: Buffer;
     try { actual = Buffer.from(signature, 'hex'); } catch { throw new UnauthorizedException('Invalid webhook signature'); }
     if (actual.length !== expected.length || !timingSafeEqual(actual, expected)) throw new UnauthorizedException('Invalid webhook signature');
+    const name = (input as { event?: unknown } | null)?.event;
+    if (typeof name === 'string' && name.startsWith('refund.')) {
+      await this.refunds.applyWebhook(name, ((input as { data?: unknown }).data ?? {}) as Record<string, unknown>);
+      return { received: true };
+    }
+    // Other event types are acknowledged so Paystack stops retrying them.
+    if (name !== 'charge.success') return { received: true, ignored: true };
     const event = this.parsePaystackEvent(input);
     const processed = await this.confirmCharge(event.data);
     return processed.duplicate ? { received: true, duplicate: true } : { received: true };

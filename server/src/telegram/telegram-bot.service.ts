@@ -4,7 +4,7 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { Bot, Context, GrammyError, InlineKeyboard } from 'grammy';
 import Redis from 'ioredis';
 import { In, Repository } from 'typeorm';
-import { Auction, AuctionOutcome, AuctionStatus, DepositStatus } from '../database/entities';
+import { Auction, AuctionOutcome, AuctionStatus, DepositRefund, DepositStatus } from '../database/entities';
 import { RegistrationsService } from '../registrations/registrations.service';
 import { isRegistrationOpen } from '../auctions/registration-window';
 import { parsePaymentReturn } from './telegram-link.service';
@@ -41,6 +41,23 @@ export function auctionEndedMessage(auction: Pick<Auction, 'title' | 'currency'>
   if (outcome === AuctionOutcome.SOLD && winningBidMinor) return `Bidding on ${auction.title} has ended. The winning bid was ${formatMinor(winningBidMinor, auction.currency)}. You did not win this time. Thanks for taking part.`;
   if (outcome === AuctionOutcome.RESERVE_NOT_MET) return `Bidding on ${auction.title} has ended without a sale because the reserve price was not reached. Thanks for taking part.`;
   return `Bidding on ${auction.title} has ended with no bids. Thanks for registering.`;
+}
+
+export function refundStartedMessage(auction: Pick<Auction, 'title' | 'currency'>, amountMinor: string): string {
+  return `We have started a refund of ${formatMinor(amountMinor, auction.currency)} for your deposit on ${auction.title}. Paystack will return it to the account you paid from. How long it takes depends on your bank.`;
+}
+
+export function refundSentMessage(auction: Pick<Auction, 'title' | 'currency'>, amountMinor: string): string {
+  return `Paystack has sent your refund of ${formatMinor(amountMinor, auction.currency)} for ${auction.title}. It can take a few working days to show in your account.`;
+}
+
+export function refundDetailsRequestMessage(auction: Pick<Auction, 'title' | 'currency'>, amountMinor: string): string {
+  return [
+    `Paystack could not return your ${formatMinor(amountMinor, auction.currency)} deposit for ${auction.title} to the account you paid from.`,
+    '',
+    'Please reply to this message with the bank account to refund, in one message:',
+    'account number, bank name, and account name.',
+  ].join('\n');
 }
 
 export function adminMessage(auction: Pick<Auction, 'title'>, text: string): string {
@@ -113,6 +130,7 @@ export class TelegramBotService implements OnApplicationBootstrap, OnModuleDestr
   constructor(
     config: ConfigService,
     @InjectRepository(Auction) private readonly auctions: Repository<Auction>,
+    @InjectRepository(DepositRefund) private readonly refunds: Repository<DepositRefund>,
     private readonly registrations: RegistrationsService,
     private readonly telegramUsers: TelegramUsersService,
   ) {
@@ -160,6 +178,12 @@ export class TelegramBotService implements OnApplicationBootstrap, OnModuleDestr
     }
   }
 
+  /** Asks the bidder for bank details and treats their next text message as the answer. */
+  async requestRefundDetails(telegramUserId: string, refundId: string, text: string): Promise<void> {
+    await this.redis.set(this.refundDetailsKey(telegramUserId), refundId, 'EX', 14 * 24 * 60 * 60);
+    await this.sendText(telegramUserId, text);
+  }
+
   /** "Enter auction" button that opens the Mini App on this auction, when a Mini App is configured. */
   private enterAuctionKeyboard(auctionId: string): InlineKeyboard | undefined {
     const url = miniAppAuctionUrl(this.miniAppUrl, auctionId);
@@ -203,6 +227,16 @@ export class TelegramBotService implements OnApplicationBootstrap, OnModuleDestr
       await ctx.answerCallbackQuery();
       await ctx.reply('Reply with the email address you want to use for your Paystack receipt. Use /cancel to stop.');
     });
+    this.bot.on('message:text', async (ctx, next) => {
+      if (!ctx.from || ctx.message.text.startsWith('/')) return next();
+      const refundId = await this.redis.get(this.refundDetailsKey(ctx.from.id));
+      if (!refundId) return next();
+      const details = ctx.message.text.trim().slice(0, 500);
+      await this.refunds.update({ id: refundId }, { customerDetails: details });
+      await this.redis.del(this.refundDetailsKey(ctx.from.id));
+      this.logger.log(`Received refund bank details for refund ${refundId}`);
+      await ctx.reply('Thank you. We will use these details to complete your refund and let you know here when it is sent.');
+    });
     this.bot.on('message:text', async (ctx) => {
       if (!ctx.from || ctx.message.text.startsWith('/')) return;
       const auctionId = await this.redis.get(this.pendingKey(ctx.from.id));
@@ -242,6 +276,8 @@ export class TelegramBotService implements OnApplicationBootstrap, OnModuleDestr
   }
 
   private pendingKey(userId: number): string { return `hammer:v1:bot:pending-email:${userId}`; }
+
+  private refundDetailsKey(userId: number | string): string { return `hammer:v1:bot:refund-details:${userId}`; }
 
   async onModuleDestroy(): Promise<void> {
     if (this.bot.isRunning()) await this.bot.stop();

@@ -1,8 +1,8 @@
 import { Module } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
-import { Auction } from '../database/entities';
+import { Auction, DepositRefund } from '../database/entities';
 import { RegistrationsModule } from '../registrations/registrations.module';
 import { TelegramBotService } from './telegram-bot.service';
 
-@Module({ imports: [TypeOrmModule.forFeature([Auction]), RegistrationsModule], providers: [TelegramBotService], exports: [TelegramBotService] })
+@Module({ imports: [TypeOrmModule.forFeature([Auction, DepositRefund]), RegistrationsModule], providers: [TelegramBotService], exports: [TelegramBotService] })
 export class TelegramModule {}

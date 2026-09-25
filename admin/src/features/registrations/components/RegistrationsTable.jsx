@@ -1,10 +1,11 @@
 import { useState } from 'react';
-import { Eye, EyeOff, MessageCircle, RefreshCw } from 'lucide-react';
+import { Eye, EyeOff, Landmark, MessageCircle, RefreshCw, Undo2 } from 'lucide-react';
 import { Button } from '@/components/ui/Button';
 import { DataTable } from '@/components/ui/DataTable';
 import { StatusBadge } from '@/components/ui/StatusBadge';
 import { useToast } from '@/components/ui/Toast';
 import { MessageDialog, TelegramUser } from '@/features/messages';
+import { CompleteRefundDialog, RefundDialog, RefundStatus } from '@/features/refunds';
 import { formatDate, maskEmail } from '@/lib/format';
 import { useRegistrations } from '../api/queries';
 import { useVerifyPayment } from '../api/mutations';
@@ -14,6 +15,8 @@ export function RegistrationsTable({ auction, refetchInterval }) {
   const auctionId = auction.id;
   const [revealEmails, setRevealEmails] = useState(false);
   const [recipient, setRecipient] = useState(null);
+  const [refunding, setRefunding] = useState(null);
+  const [completing, setCompleting] = useState(null);
   const [depositFilter, setDepositFilter] = useState('ALL');
   const { data = [], isLoading, error } = useRegistrations(auctionId, { refetchInterval });
   const rows = depositFilter === 'ALL' ? data : data.filter((row) => row.depositStatus === depositFilter);
@@ -29,10 +32,21 @@ export function RegistrationsTable({ auction, refetchInterval }) {
     onError: (error) => toast.error(error.message),
   });
 
+  const nameOf = (row) => row.telegramName || (row.telegramUsername ? `@${row.telegramUsername}` : row.telegramUserId);
+
   const columns = [
     { key: 'telegramUserId', header: 'Telegram user', render: (row) => <TelegramUser id={row.telegramUserId} name={row.telegramName} username={row.telegramUsername} /> },
     { key: 'payerEmail', header: 'Email', render: (row) => (revealEmails ? row.payerEmail : maskEmail(row.payerEmail)) },
-    { key: 'depositStatus', header: 'Deposit', render: (row) => <StatusBadge status={row.depositStatus} /> },
+    {
+      key: 'depositStatus',
+      header: 'Deposit',
+      render: (row) => (
+        <div className="badge-stack">
+          <StatusBadge status={row.depositStatus} />
+          <RefundStatus refund={row.refund} />
+        </div>
+      ),
+    },
     {
       key: 'paymentReference',
       header: 'Payment reference',
@@ -63,6 +77,12 @@ export function RegistrationsTable({ auction, refetchInterval }) {
               {verifyPayment.isPending && verifyPayment.variables === row.id ? 'Checking...' : 'Verify payment'}
             </Button>
           )}
+          {row.depositStatus === 'HELD' && (
+            <Button variant="secondary" icon={Undo2} onClick={() => setRefunding(row)}>Refund</Button>
+          )}
+          {row.refund?.status === 'needs-attention' && (
+            <Button variant="secondary" icon={Landmark} onClick={() => setCompleting(row)}>Complete refund</Button>
+          )}
         </div>
       ),
     },
@@ -90,6 +110,8 @@ export function RegistrationsTable({ auction, refetchInterval }) {
         emptyMessage={data.length ? 'No registrations with this deposit status.' : 'No registrations yet.'}
       />
       {recipient && <MessageDialog auction={auction} recipient={recipient} onClose={() => setRecipient(null)} />}
+      {refunding && <RefundDialog auction={auction} registration={refunding} who={nameOf(refunding)} onClose={() => setRefunding(null)} />}
+      {completing && <CompleteRefundDialog auction={auction} refund={completing.refund} who={nameOf(completing)} onClose={() => setCompleting(null)} />}
     </>
   );
 }

@@ -8,7 +8,7 @@ import { TelegramBotService } from '../src/telegram/telegram-bot.service';
 describe('PaymentsService.reconcile', () => {
   const paystack = { verifyTransaction: jest.fn() };
   const transaction = jest.fn();
-  const service = new PaymentsService({} as ConfigService, { transaction } as unknown as DataSource, {} as EntryCodeService, {} as TelegramBotService, paystack as unknown as PaystackService);
+  const service = new PaymentsService({} as ConfigService, { transaction } as unknown as DataSource, {} as EntryCodeService, {} as TelegramBotService, paystack as unknown as PaystackService, {} as never);
 
   afterEach(() => jest.resetAllMocks());
 

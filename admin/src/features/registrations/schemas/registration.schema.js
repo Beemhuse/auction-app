@@ -16,6 +16,13 @@ export const registrationSchema = z.object({
   depositStatus: z.enum(DEPOSIT_STATUSES),
   codeRedeemedAt: timestamp.nullable(),
   createdAt: timestamp,
+  refund: z.object({
+    id: z.string(),
+    status: z.string(),
+    amountMinor: z.string(),
+    customerDetails: z.string().nullable(),
+    updatedAt: timestamp,
+  }).nullable(),
 });
 
 export const registrationListSchema = z.array(registrationSchema);

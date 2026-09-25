@@ -91,3 +91,20 @@ export class TelegramUser {
   @Column({ name: 'last_name', type: 'varchar', nullable: true }) lastName: string | null;
   @UpdateDateColumn({ name: 'updated_at' }) updatedAt: Date;
 }
+
+/** A deposit refund requested through Paystack. One per registration; a failed one can be retried. */
+@Entity('deposit_refunds')
+export class DepositRefund {
+  @PrimaryGeneratedColumn('uuid') id: string;
+  @Index({ unique: true }) @Column({ name: 'registration_id', type: 'uuid' }) registrationId: string;
+  @Column({ name: 'provider_refund_id', type: 'varchar', nullable: true }) providerRefundId: string | null;
+  @Column({ name: 'payment_reference', type: 'varchar' }) paymentReference: string;
+  @Column({ name: 'amount_minor', type: 'bigint' }) amountMinor: string;
+  @Column({ length: 3 }) currency: string;
+  /** Paystack's status (pending, processing, processed, failed, needs-attention), or `requesting` before Paystack answers. */
+  @Column({ type: 'varchar', length: 30 }) status: string;
+  /** Bank details the bidder sent in the bot chat when Paystack could not refund automatically. */
+  @Column({ name: 'customer_details', type: 'text', nullable: true }) customerDetails: string | null;
+  @CreateDateColumn({ name: 'created_at' }) createdAt: Date;
+  @UpdateDateColumn({ name: 'updated_at' }) updatedAt: Date;
+}

@@ -18,4 +18,5 @@ export class PaystackWebhookDto {
 export class PaymentWebhookResponseDto {
   @ApiProperty() received: boolean;
   @ApiProperty({ required: false }) duplicate?: boolean;
+  @ApiProperty({ required: false }) ignored?: boolean;
 }

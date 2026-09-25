@@ -44,3 +44,17 @@ export class SendUserMessageDto {
   @IsString() @IsNotEmpty() @MaxLength(3500)
   text: string;
 }
+
+export class RefundDepositDto {
+  /** Omit to refund the full deposit. */
+  @IsOptional() @IsString() @Matches(/^[1-9]\d{0,17}$/)
+  amountMinor?: string;
+}
+
+export class RetryRefundDto {
+  @IsString() @Matches(/^\d{6,20}$/, { message: 'Account number must be 6 to 20 digits' })
+  accountNumber: string;
+
+  @IsString() @Matches(/^\d{1,10}$/)
+  bankId: string;
+}
