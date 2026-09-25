@@ -3,6 +3,7 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { Auction, AuctionRegistration, AuctionStatus, Bid, DepositStatus } from '../database/entities';
 import { CreateAuctionDto, UpdateAuctionDto } from './admin.dto';
+import { PaymentsService } from '../payments/payments.service';
 
 @Injectable()
 export class AdminService {
@@ -10,6 +11,7 @@ export class AdminService {
     @InjectRepository(Auction) private readonly auctions: Repository<Auction>,
     @InjectRepository(AuctionRegistration) private readonly registrations: Repository<AuctionRegistration>,
     @InjectRepository(Bid) private readonly bids: Repository<Bid>,
+    private readonly payments: PaymentsService,
   ) {}
 
   async overview() {
@@ -79,6 +81,14 @@ export class AdminService {
   async bidsFor(auctionId: string): Promise<Bid[]> {
     await this.requireAuction(auctionId);
     return this.bids.find({ where: { auctionId }, order: { sequence: 'DESC' }, take: 500 });
+  }
+
+  /** Checks the registration's payment with Paystack and confirms it if the webhook was missed. */
+  async verifyPayment(registrationId: string) {
+    const registration = await this.registrations.findOneBy({ id: registrationId });
+    if (!registration) throw new NotFoundException('Registration not found');
+    if (!registration.paymentReference) throw new BadRequestException('This registration has no payment to verify');
+    return this.payments.reconcile(registration.paymentReference);
   }
 
   private assertSchedule(startsAtValue: string, endsAtValue: string): void {

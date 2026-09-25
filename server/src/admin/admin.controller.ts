@@ -23,6 +23,9 @@ export class AdminController {
   @Get('auctions/:id/registrations') @ApiOperation({ summary: 'List auction registrations' })
   registrations(@Param('id', ParseUUIDPipe) id: string) { return this.admin.registrationsFor(id); }
 
+  @Post('registrations/:id/verify-payment') @ApiOperation({ summary: 'Verify a registration payment with Paystack and confirm it if the webhook was missed' })
+  verifyPayment(@Param('id', ParseUUIDPipe) id: string) { return this.admin.verifyPayment(id); }
+
   @Get('auctions/:id/bids') @ApiOperation({ summary: 'List auction bids' })
   bids(@Param('id', ParseUUIDPipe) id: string) { return this.admin.bidsFor(id); }
 }

@@ -17,3 +17,9 @@ export const registrationSchema = z.object({
 });
 
 export const registrationListSchema = z.array(registrationSchema);
+
+export const verifyPaymentResultSchema = z.object({
+  confirmed: z.boolean(),
+  paystackStatus: z.string(),
+  duplicate: z.boolean().optional(),
+});

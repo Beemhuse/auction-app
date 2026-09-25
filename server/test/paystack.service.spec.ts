@@ -37,6 +37,11 @@ describe('PaystackService', () => {
       await expect(service.transactionStatus('HMR-missing')).resolves.toBeNull();
     });
 
+    it('verifyTransaction returns the full transaction for confirmation', async () => {
+      reply(200, { status: true, message: 'Verification successful', data: { id: 42, status: 'success', reference: 'HMR-ref', amount: 2000000, currency: 'NGN' } });
+      await expect(service.verifyTransaction('HMR-ref')).resolves.toEqual({ id: 42, status: 'success', reference: 'HMR-ref', amount: 2000000, currency: 'NGN' });
+    });
+
     it('throws on other provider errors', async () => {
       reply(500, { status: false, message: 'Server error' });
       await expect(service.transactionStatus('HMR-ref')).rejects.toThrow('Server error');

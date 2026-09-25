@@ -10,8 +10,10 @@ type PaystackInitializeResponse = {
 type PaystackVerifyResponse = {
   status: boolean;
   message: string;
-  data?: { status: string; reference: string };
+  data?: PaystackTransaction;
 };
+
+export type PaystackTransaction = { id: number; status: string; reference: string; amount: number; currency: string };
 
 @Injectable()
 export class PaystackService {
@@ -38,9 +40,17 @@ export class PaystackService {
   /**
    * Paystack's view of a transaction (`abandoned`, `ongoing`, `success`, `failed`, ...), or null when
    * Paystack has no record of the reference. Used only to decide whether a checkout link can be
-   * reused; it never confirms a deposit. That is the signed webhook's job.
+   * reused; it never confirms a deposit.
    */
   async transactionStatus(reference: string): Promise<string | null> {
+    return (await this.verifyTransaction(reference))?.status ?? null;
+  }
+
+  /**
+   * The transaction as Paystack records it, or null when Paystack has no record of the reference.
+   * The call is authenticated with our secret key, so its answer is as trustworthy as a signed webhook.
+   */
+  async verifyTransaction(reference: string): Promise<PaystackTransaction | null> {
     const secret = this.secret();
     let response: Response;
     try {
@@ -51,7 +61,7 @@ export class PaystackService {
     const result = await response.json().catch(() => null) as PaystackVerifyResponse | null;
     if (response.status === 404 || (result?.status === false && /not found/i.test(result.message))) return null;
     if (!response.ok || !result?.status || !result.data?.status) throw new BadGatewayException(result?.message || 'Paystack verification failed');
-    return result.data.status;
+    return result.data;
   }
 
   private secret(): string {
