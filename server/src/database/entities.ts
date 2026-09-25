@@ -1,8 +1,10 @@
-import { Column, CreateDateColumn, Entity, Index, PrimaryGeneratedColumn, Unique, UpdateDateColumn } from 'typeorm';
+import { Column, CreateDateColumn, Entity, Index, PrimaryColumn, PrimaryGeneratedColumn, Unique, UpdateDateColumn } from 'typeorm';
 
 export enum AuctionStatus { SCHEDULED = 'SCHEDULED', ACTIVE = 'ACTIVE', CLOSED = 'CLOSED' }
 export enum DepositStatus { PENDING = 'PENDING', HELD = 'HELD', APPLIED = 'APPLIED', REFUNDED = 'REFUNDED', FORFEIT = 'FORFEIT' }
 export enum PaymentAttemptStatus { INITIALIZING = 'INITIALIZING', PENDING = 'PENDING', PAID = 'PAID', FAILED = 'FAILED' }
+/** LEGACY marks auctions closed before results were recorded; nobody was notified about them. */
+export enum AuctionOutcome { SOLD = 'SOLD', RESERVE_NOT_MET = 'RESERVE_NOT_MET', NO_BIDS = 'NO_BIDS', LEGACY = 'LEGACY' }
 
 @Entity('auctions')
 export class Auction {
@@ -67,4 +69,25 @@ export class Bid {
   @Column({ type: 'bigint' }) sequence: string;
   @Index({ unique: true }) @Column({ name: 'request_id', type: 'uuid' }) requestId: string;
   @CreateDateColumn({ name: 'placed_at' }) placedAt: Date;
+}
+
+/** How a closed auction ended. Kept apart from `auctions`, whose rows are served publicly. */
+@Entity('auction_results')
+export class AuctionResult {
+  @PrimaryColumn({ name: 'auction_id', type: 'uuid' }) auctionId: string;
+  @Column({ type: 'varchar', length: 20 }) outcome: AuctionOutcome;
+  @Column({ name: 'winner_telegram_user_id', type: 'bigint', nullable: true }) winnerTelegramUserId: string | null;
+  @Column({ name: 'winning_bid_minor', type: 'bigint', nullable: true }) winningBidMinor: string | null;
+  @Column({ name: 'highest_bid_minor', type: 'bigint', nullable: true }) highestBidMinor: string | null;
+  @CreateDateColumn({ name: 'closed_at' }) closedAt: Date;
+}
+
+/** Latest Telegram profile seen for a user, so admins can recognise and reach them. */
+@Entity('telegram_users')
+export class TelegramUser {
+  @PrimaryColumn({ name: 'telegram_user_id', type: 'bigint' }) telegramUserId: string;
+  @Column({ type: 'varchar', nullable: true }) username: string | null;
+  @Column({ name: 'first_name', type: 'varchar', nullable: true }) firstName: string | null;
+  @Column({ name: 'last_name', type: 'varchar', nullable: true }) lastName: string | null;
+  @UpdateDateColumn({ name: 'updated_at' }) updatedAt: Date;
 }

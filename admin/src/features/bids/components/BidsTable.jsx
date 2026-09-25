@@ -1,5 +1,6 @@
 import { DataTable } from '@/components/ui/DataTable';
 import { StatusBadge } from '@/components/ui/StatusBadge';
+import { TelegramUser } from '@/features/messages';
 import { formatDate, formatMoney } from '@/lib/format';
 import { useBids } from '../api/queries';
 import { BID_HISTORY_LIMIT } from '../schemas/bid.schema';
@@ -11,7 +12,7 @@ export function BidsTable({ auctionId, currency, auctionStatus, refetchInterval 
 
   const columns = [
     { key: 'sequence', header: 'Sequence', render: (bid) => <span className="mono">#{bid.sequence}</span> },
-    { key: 'telegramUserId', header: 'Telegram user', render: (bid) => <span className="mono">{bid.telegramUserId}</span> },
+    { key: 'telegramUserId', header: 'Bidder', render: (bid) => <TelegramUser id={bid.telegramUserId} name={bid.telegramName} username={bid.telegramUsername} /> },
     {
       key: 'amountMinor',
       header: 'Amount',

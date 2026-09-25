@@ -134,6 +134,19 @@ a.auction-name:hover { color: var(--green); text-decoration: underline; }
 .tab-count { min-width: 22px; padding: 1px 7px; border-radius: 10px; background: #e7ebe8; color: var(--ink); font-size: 11px; }
 .tab.active .tab-count { background: #dcece4; color: var(--green); }
 
+/* ---------- Auction result & messaging ---------- */
+
+.result-panel { display: flex; align-items: center; justify-content: space-between; gap: 16px; flex-wrap: wrap; margin-bottom: 16px; padding: 16px 20px; border: 1px solid var(--line); border-left: 4px solid var(--green); border-radius: 4px; background: var(--surface); }
+.result-copy { display: grid; gap: 8px; min-width: 0; }
+.result-copy p { margin: 0; font-size: 14px; }
+.result-heading { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; font-size: 13px; }
+.result-winner { font-size: 16px; font-weight: 700; }
+.telegram-user { display: inline-grid; gap: 2px; }
+.telegram-user a { color: var(--green); font-size: 12px; font-weight: 600; }
+.row-actions { display: flex; justify-content: flex-end; gap: 8px; flex-wrap: wrap; }
+textarea { width: 100%; min-height: 120px; padding: 10px 11px; border: 1px solid #bdc7c0; border-radius: 4px; color: var(--ink); background: #fff; font: inherit; resize: vertical; outline: none; }
+textarea:focus { border-color: var(--green); box-shadow: 0 0 0 3px rgba(23, 107, 77, .12); }
+
 /* ---------- Detail facts ---------- */
 
 .fact-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); margin: 0; border-top: 1px solid var(--line); border-left: 1px solid var(--line); }

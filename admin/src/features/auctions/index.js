@@ -3,6 +3,7 @@ export { useCreateAuction, useUpdateAuction } from './api/mutations';
 export { overviewQueryOptions, useAuction, useOverview } from './api/queries';
 export { AuctionFilters } from './components/AuctionFilters';
 export { AuctionFormDialog } from './components/AuctionFormDialog';
+export { AuctionResultPanel } from './components/AuctionResultPanel';
 export { AuctionStatusActions } from './components/AuctionStatusActions';
 export { AuctionSummary } from './components/AuctionSummary';
 export { AuctionTable } from './components/AuctionTable';

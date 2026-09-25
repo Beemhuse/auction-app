@@ -11,6 +11,14 @@ import { PriceBoard } from './PriceBoard';
 import { RoomCountdown } from './RoomCountdown';
 import { roomPhase } from './phase';
 
+/** The bot chat carries the full result; this points the bidder there. */
+function endedMessage(state) {
+  if (!state.leading) return 'This auction has ended.';
+  if (state.outcome === 'SOLD') return 'Congratulations, you won! We have sent the next steps to your bot chat.';
+  if (state.outcome === 'RESERVE_NOT_MET') return 'Your bid was the highest but did not reach the reserve price. We have messaged you in the bot chat.';
+  return 'Bidding has closed. Your result will arrive in the bot chat shortly.';
+}
+
 export function LiveRoom({ auctionId, roomToken }) {
   const toast = useToast();
   const { live, feed, connection, placeBid } = useLiveRoom(auctionId, roomToken);
@@ -25,7 +33,7 @@ export function LiveRoom({ auctionId, roomToken }) {
 
   let disabledReason = null;
   if (phase === 'waiting') disabledReason = 'Bidding opens when the auctioneer starts the auction.';
-  else if (phase === 'ended') disabledReason = state.leading ? 'Congratulations! We will contact you in the bot chat about next steps.' : 'This auction has ended.';
+  else if (phase === 'ended') disabledReason = endedMessage(state);
   else if (state.leading) disabledReason = 'You are winning. We will let you know here if someone outbids you.';
 
   const bid = (amountMinor) => placeBid.mutate(amountMinor, {

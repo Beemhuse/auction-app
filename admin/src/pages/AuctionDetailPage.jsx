@@ -6,7 +6,7 @@ import { ErrorState } from '@/components/ui/ErrorState';
 import { PageHeader } from '@/components/ui/PageHeader';
 import { StatusBadge } from '@/components/ui/StatusBadge';
 import { Tabs } from '@/components/ui/Tabs';
-import { AuctionFormDialog, AuctionStatusActions, AuctionSummary, useAuction } from '@/features/auctions';
+import { AuctionFormDialog, AuctionResultPanel, AuctionStatusActions, AuctionSummary, useAuction } from '@/features/auctions';
 import { BidsTable } from '@/features/bids';
 import { RegistrationsTable } from '@/features/registrations';
 import { NotFoundPage } from './NotFoundPage';
@@ -49,6 +49,7 @@ export function AuctionDetailPage() {
             <span className="record-id">{auction.id}</span>
           </div>
         </PageHeader>
+        <AuctionResultPanel auction={auction} />
         <AuctionSummary auction={auction} />
       </section>
 
@@ -63,7 +64,7 @@ export function AuctionDetailPage() {
           ]}
         />
         {tab === 'registrations'
-          ? <RegistrationsTable auctionId={auction.id} refetchInterval={liveRefresh} />
+          ? <RegistrationsTable auction={auction} refetchInterval={liveRefresh} />
           : <BidsTable auctionId={auction.id} currency={auction.currency} auctionStatus={auction.status} refetchInterval={liveRefresh} />}
       </section>
 

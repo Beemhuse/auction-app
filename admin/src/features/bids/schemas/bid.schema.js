@@ -4,6 +4,8 @@ export const bidSchema = z.object({
   id: z.string(),
   auctionId: z.string(),
   telegramUserId: z.string(),
+  telegramUsername: z.string().nullable(),
+  telegramName: z.string().nullable(),
   amountMinor: z.string().regex(/^\d+$/),
   sequence: z.string().regex(/^\d+$/),
   requestId: z.string(),

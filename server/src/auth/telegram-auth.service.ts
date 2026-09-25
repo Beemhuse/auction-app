@@ -2,7 +2,7 @@ import { createHmac, timingSafeEqual } from 'node:crypto';
 import { Injectable, UnauthorizedException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 
-export type TelegramIdentity = { id: string; username?: string };
+export type TelegramIdentity = { id: string; username?: string; firstName?: string; lastName?: string };
 
 // Mini App initData is signed once when the app opens and never refreshes, so it must outlast a session
 // (waiting for an entry code, reading an auction). Live bidding uses room tokens instead.
@@ -28,9 +28,9 @@ export class TelegramAuthService {
     try { actual = Buffer.from(hash, 'hex'); } catch { throw new UnauthorizedException('Invalid Telegram authentication'); }
     if (actual.length !== expected.length || !timingSafeEqual(actual, expected)) throw new UnauthorizedException('Invalid Telegram authentication');
     try {
-      const user = JSON.parse(params.get('user') ?? '') as { id?: number | string; username?: string };
+      const user = JSON.parse(params.get('user') ?? '') as { id?: number | string; username?: string; first_name?: string; last_name?: string };
       if (!user.id) throw new Error();
-      return { id: String(user.id), username: user.username };
+      return { id: String(user.id), username: user.username, firstName: user.first_name, lastName: user.last_name };
     } catch { throw new UnauthorizedException('Invalid Telegram user'); }
   }
 }

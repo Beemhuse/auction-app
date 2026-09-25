@@ -1,16 +1,19 @@
 import { useState } from 'react';
-import { Eye, EyeOff, RefreshCw } from 'lucide-react';
+import { Eye, EyeOff, MessageCircle, RefreshCw } from 'lucide-react';
 import { Button } from '@/components/ui/Button';
 import { DataTable } from '@/components/ui/DataTable';
 import { StatusBadge } from '@/components/ui/StatusBadge';
 import { useToast } from '@/components/ui/Toast';
+import { MessageDialog, TelegramUser } from '@/features/messages';
 import { formatDate, maskEmail } from '@/lib/format';
 import { useRegistrations } from '../api/queries';
 import { useVerifyPayment } from '../api/mutations';
 import { DEPOSIT_STATUSES } from '../schemas/registration.schema';
 
-export function RegistrationsTable({ auctionId, refetchInterval }) {
+export function RegistrationsTable({ auction, refetchInterval }) {
+  const auctionId = auction.id;
   const [revealEmails, setRevealEmails] = useState(false);
+  const [recipient, setRecipient] = useState(null);
   const [depositFilter, setDepositFilter] = useState('ALL');
   const { data = [], isLoading, error } = useRegistrations(auctionId, { refetchInterval });
   const rows = depositFilter === 'ALL' ? data : data.filter((row) => row.depositStatus === depositFilter);
@@ -27,7 +30,7 @@ export function RegistrationsTable({ auctionId, refetchInterval }) {
   });
 
   const columns = [
-    { key: 'telegramUserId', header: 'Telegram user', render: (row) => <span className="mono">{row.telegramUserId}</span> },
+    { key: 'telegramUserId', header: 'Telegram user', render: (row) => <TelegramUser id={row.telegramUserId} name={row.telegramName} username={row.telegramUsername} /> },
     { key: 'payerEmail', header: 'Email', render: (row) => (revealEmails ? row.payerEmail : maskEmail(row.payerEmail)) },
     { key: 'depositStatus', header: 'Deposit', render: (row) => <StatusBadge status={row.depositStatus} /> },
     {
@@ -44,17 +47,24 @@ export function RegistrationsTable({ auctionId, refetchInterval }) {
     {
       key: 'actions',
       header: '',
-      render: (row) => (row.paymentReference && row.depositStatus === 'PENDING' ? (
-        <Button
-          variant="secondary"
-          icon={RefreshCw}
-          onClick={() => verify(row)}
-          disabled={verifyPayment.isPending && verifyPayment.variables === row.id}
-          title="Ask Paystack whether this payment succeeded and confirm it if the webhook was missed"
-        >
-          {verifyPayment.isPending && verifyPayment.variables === row.id ? 'Checking...' : 'Verify payment'}
-        </Button>
-      ) : null),
+      render: (row) => (
+        <div className="row-actions">
+          <Button variant="ghost" icon={MessageCircle} onClick={() => setRecipient({ telegramUserId: row.telegramUserId, name: row.telegramName, username: row.telegramUsername })}>
+            Message
+          </Button>
+          {row.paymentReference && row.depositStatus === 'PENDING' && (
+            <Button
+              variant="secondary"
+              icon={RefreshCw}
+              onClick={() => verify(row)}
+              disabled={verifyPayment.isPending && verifyPayment.variables === row.id}
+              title="Ask Paystack whether this payment succeeded and confirm it if the webhook was missed"
+            >
+              {verifyPayment.isPending && verifyPayment.variables === row.id ? 'Checking...' : 'Verify payment'}
+            </Button>
+          )}
+        </div>
+      ),
     },
   ];
 
@@ -79,6 +89,7 @@ export function RegistrationsTable({ auctionId, refetchInterval }) {
         error={error}
         emptyMessage={data.length ? 'No registrations with this deposit status.' : 'No registrations yet.'}
       />
+      {recipient && <MessageDialog auction={auction} recipient={recipient} onClose={() => setRecipient(null)} />}
     </>
   );
 }

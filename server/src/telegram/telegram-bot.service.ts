@@ -1,15 +1,51 @@
 import { HttpException, HttpStatus, Injectable, Logger, OnApplicationBootstrap, OnModuleDestroy } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Bot, Context, InlineKeyboard } from 'grammy';
+import { Bot, Context, GrammyError, InlineKeyboard } from 'grammy';
 import Redis from 'ioredis';
 import { In, Repository } from 'typeorm';
-import { Auction, AuctionStatus, DepositStatus } from '../database/entities';
+import { Auction, AuctionOutcome, AuctionStatus, DepositStatus } from '../database/entities';
 import { RegistrationsService } from '../registrations/registrations.service';
 import { isRegistrationOpen } from '../auctions/registration-window';
 import { parsePaymentReturn } from './telegram-link.service';
+import { TelegramUsersService } from '../auth/telegram-users.service';
 
 type PaymentReturn = Awaited<ReturnType<RegistrationsService['paymentReturn']>>;
+
+export function formatMinor(minor: string, currency: string): string {
+  return new Intl.NumberFormat('en-NG', { style: 'currency', currency }).format(Number(minor) / 100);
+}
+
+export function winnerMessage(auction: Pick<Auction, 'title' | 'currency'>, winningBidMinor: string): string {
+  return [
+    `Congratulations! You won ${auction.title}.`,
+    '',
+    `Winning bid: ${formatMinor(winningBidMinor, auction.currency)}`,
+    '',
+    'We will message you in this chat shortly with payment and collection details.',
+  ].join('\n');
+}
+
+export function reserveNotMetMessage(auction: Pick<Auction, 'title' | 'currency'>, highestBidMinor: string): string {
+  return [
+    `Bidding on ${auction.title} has ended.`,
+    '',
+    `Your bid of ${formatMinor(highestBidMinor, auction.currency)} was the highest, but it did not reach the reserve price, so the item was not sold.`,
+    '',
+    'We will message you in this chat about what happens next.',
+  ].join('\n');
+}
+
+/** For admitted bidders who did not end up as the highest bidder. */
+export function auctionEndedMessage(auction: Pick<Auction, 'title' | 'currency'>, outcome: AuctionOutcome, winningBidMinor: string | null): string {
+  if (outcome === AuctionOutcome.SOLD && winningBidMinor) return `Bidding on ${auction.title} has ended. The winning bid was ${formatMinor(winningBidMinor, auction.currency)}. You did not win this time. Thanks for taking part.`;
+  if (outcome === AuctionOutcome.RESERVE_NOT_MET) return `Bidding on ${auction.title} has ended without a sale because the reserve price was not reached. Thanks for taking part.`;
+  return `Bidding on ${auction.title} has ended with no bids. Thanks for registering.`;
+}
+
+export function adminMessage(auction: Pick<Auction, 'title'>, text: string): string {
+  return [`Message about ${auction.title}:`, '', text].join('\n');
+}
 
 export function entryCodeMessage(auction: Pick<Auction, 'title' | 'startsAt'>, code: string): string {
   return [
@@ -78,6 +114,7 @@ export class TelegramBotService implements OnApplicationBootstrap, OnModuleDestr
     config: ConfigService,
     @InjectRepository(Auction) private readonly auctions: Repository<Auction>,
     private readonly registrations: RegistrationsService,
+    private readonly telegramUsers: TelegramUsersService,
   ) {
     this.bot = new Bot(config.getOrThrow<string>('TELEGRAM_BOT_TOKEN'));
     this.redis = new Redis(config.getOrThrow<string>('REDIS_URL'), { maxRetriesPerRequest: 1 });
@@ -109,6 +146,20 @@ export class TelegramBotService implements OnApplicationBootstrap, OnModuleDestr
     await this.bot.api.sendMessage(telegramUserId, entryCodeMessage(auction, code), { reply_markup: this.enterAuctionKeyboard(auction.id) });
   }
 
+  /**
+   * Sends plain text to a user who has started the bot. Telegram refusals (the user blocked the bot or
+   * never started it) are rethrown with a readable message.
+   */
+  async sendText(telegramUserId: string, text: string): Promise<void> {
+    try {
+      await this.bot.api.sendMessage(telegramUserId, text);
+    } catch (error) {
+      if (error instanceof GrammyError && error.error_code === 403) throw new Error('This user has blocked the bot or never started it');
+      if (error instanceof GrammyError) throw new Error(`Telegram refused the message: ${error.description}`);
+      throw new Error('Could not reach Telegram');
+    }
+  }
+
   /** "Enter auction" button that opens the Mini App on this auction, when a Mini App is configured. */
   private enterAuctionKeyboard(auctionId: string): InlineKeyboard | undefined {
     const url = miniAppAuctionUrl(this.miniAppUrl, auctionId);
@@ -127,6 +178,10 @@ export class TelegramBotService implements OnApplicationBootstrap, OnModuleDestr
   }
 
   private configureHandlers(): void {
+    this.bot.use(async (ctx, next) => {
+      if (ctx.from && !ctx.from.is_bot) void this.telegramUsers.remember({ id: ctx.from.id, username: ctx.from.username, firstName: ctx.from.first_name, lastName: ctx.from.last_name });
+      await next();
+    });
     this.bot.command('start', async (ctx) => {
       const reference = parsePaymentReturn(ctx.match);
       if (!reference || !ctx.from) { await this.sendCatalog(ctx); return; }
@@ -180,7 +235,7 @@ export class TelegramBotService implements OnApplicationBootstrap, OnModuleDestr
     if (!auctions.length) { await ctx.reply('There are no available auctions right now. Check back soon.'); return; }
     await ctx.reply('Available auctions');
     for (const auction of auctions) {
-      const amount = (minor: string) => new Intl.NumberFormat('en-NG', { style: 'currency', currency: auction.currency }).format(Number(minor) / 100);
+      const amount = (minor: string) => formatMinor(minor, auction.currency);
       const text = [`${auction.title}`, `Starts: ${auction.startsAt.toISOString()}`, `Opening bid: ${amount(auction.startingPriceMinor)}`, `Minimum increment: ${amount(auction.minIncrementMinor)}`, `Refundable deposit: ${amount(auction.depositAmountMinor)}`].join('\n');
       await ctx.reply(text, { reply_markup: new InlineKeyboard().text('Register', `register:${auction.id}`) });
     }

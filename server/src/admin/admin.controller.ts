@@ -1,7 +1,7 @@
 import { Body, Controller, Get, Param, ParseUUIDPipe, Patch, Post, UseGuards } from '@nestjs/common';
 import { ApiHeader, ApiOperation, ApiTags } from '@nestjs/swagger';
 import { AdminKeyGuard } from './admin-key.guard';
-import { CreateAuctionDto, UpdateAuctionDto } from './admin.dto';
+import { CreateAuctionDto, SendUserMessageDto, UpdateAuctionDto } from './admin.dto';
 import { AdminService } from './admin.service';
 
 @ApiTags('admin')
@@ -22,6 +22,9 @@ export class AdminController {
 
   @Get('auctions/:id/registrations') @ApiOperation({ summary: 'List auction registrations' })
   registrations(@Param('id', ParseUUIDPipe) id: string) { return this.admin.registrationsFor(id); }
+
+  @Post('auctions/:id/messages') @ApiOperation({ summary: 'Send a Telegram message through the bot to a user registered for this auction' })
+  message(@Param('id', ParseUUIDPipe) id: string, @Body() input: SendUserMessageDto) { return this.admin.messageUser(id, input); }
 
   @Post('registrations/:id/verify-payment') @ApiOperation({ summary: 'Verify a registration payment with Paystack and confirm it if the webhook was missed' })
   verifyPayment(@Param('id', ParseUUIDPipe) id: string) { return this.admin.verifyPayment(id); }

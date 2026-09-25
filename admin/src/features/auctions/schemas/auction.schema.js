@@ -25,11 +25,22 @@ export const auctionSchema = z.object({
   createdAt: timestamp,
 });
 
+export const auctionResultSchema = z.object({
+  outcome: z.enum(['SOLD', 'RESERVE_NOT_MET', 'NO_BIDS', 'LEGACY']),
+  winnerTelegramUserId: z.string().nullable(),
+  winnerUsername: z.string().nullable(),
+  winnerName: z.string().nullable(),
+  winningBidMinor: minorAmount.nullable(),
+  highestBidMinor: minorAmount.nullable(),
+  closedAt: timestamp,
+});
+
 export const auctionSummarySchema = auctionSchema.extend({
   registrationCount: z.number().int(),
   paidCount: z.number().int(),
   bidCount: z.number().int(),
   highestBidMinor: minorAmount.nullable(),
+  result: auctionResultSchema.nullable(),
 });
 
 export const overviewSchema = z.object({

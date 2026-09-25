@@ -22,7 +22,7 @@ describe('BiddingService.state', () => {
   const build = (live: Record<string, string>) => new BiddingService(
     { hgetall: jest.fn().mockResolvedValue(live) } as never,
     { findOneBy: jest.fn().mockResolvedValue(AUCTION) } as never,
-    {} as never, {} as never, {} as never,
+    {} as never, {} as never, { findOneBy: jest.fn().mockResolvedValue(null) } as never, {} as never,
   );
 
   it('opens at the starting price before any bid', async () => {

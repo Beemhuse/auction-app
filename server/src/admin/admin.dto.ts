@@ -34,3 +34,13 @@ export class CreateAuctionDto {
 }
 
 export class UpdateAuctionDto extends PartialType(CreateAuctionDto) {}
+
+export class SendUserMessageDto {
+  @IsString() @Matches(/^\d{1,20}$/)
+  telegramUserId: string;
+
+  // Telegram's limit is 4096 characters; the auction title header uses some of it.
+  @Transform(({ value }) => typeof value === 'string' ? value.trim() : value)
+  @IsString() @IsNotEmpty() @MaxLength(3500)
+  text: string;
+}

@@ -15,6 +15,7 @@ export const liveStateSchema = z.object({
   startsAt: timestamp,
   effectiveEndsAt: timestamp,
   leading: z.boolean(),
+  outcome: z.enum(['SOLD', 'RESERVE_NOT_MET', 'NO_BIDS', 'LEGACY']).nullable().optional(),
   serverTime: timestamp,
 });
 
