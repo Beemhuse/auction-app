@@ -25,7 +25,8 @@ export async function apiRequest(path, { schema, body, headers, signal, method =
     response = await fetch(`${API_BASE}${path}`, {
       method,
       signal,
-      headers: { 'Content-Type': 'application/json', ...headers },
+      // Fastify rejects a JSON content-type with an empty body, e.g. a bodiless POST action.
+      headers: { ...(body === undefined ? {} : { 'Content-Type': 'application/json' }), ...headers },
       body: body === undefined ? undefined : JSON.stringify(body),
     });
   } catch (cause) {
